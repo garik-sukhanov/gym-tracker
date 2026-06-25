@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type FC } from 'react'
 import { Scanner } from './components/Scanner'
+import { HomeIcon, JournalIcon, DumbbellIcon, DataIcon } from './components/icons'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { LogScreen } from './screens/LogScreen'
 import { HistoryScreen } from './screens/HistoryScreen'
@@ -24,12 +25,11 @@ type Overlay =
   | { kind: 'form'; exercise?: Exercise; prefill?: ExercisePrefill; thenLog?: boolean }
   | null
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'home', label: 'Главная' },
-  { id: 'log', label: 'Запись' },
-  { id: 'history', label: 'Журнал' },
-  { id: 'manage', label: 'Тренажёры' },
-  { id: 'data', label: 'Данные' },
+const TABS: { id: Tab; label: string; Icon: FC<{ className?: string }> }[] = [
+  { id: 'home', label: 'Главная', Icon: HomeIcon },
+  { id: 'history', label: 'Журнал', Icon: JournalIcon },
+  { id: 'manage', label: 'Тренажёры', Icon: DumbbellIcon },
+  { id: 'data', label: 'Данные', Icon: DataIcon },
 ]
 
 function App() {
@@ -145,7 +145,8 @@ function App() {
             className={tab === t.id ? 'tabbar__item is-active' : 'tabbar__item'}
             onClick={() => setTab(t.id)}
           >
-            {t.label}
+            <t.Icon className="tabbar__icon" />
+            <span>{t.label}</span>
           </button>
         ))}
       </nav>
