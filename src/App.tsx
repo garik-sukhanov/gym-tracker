@@ -1,26 +1,30 @@
 import { useState } from 'react'
 import { Scanner } from './components/Scanner'
+import { DashboardScreen } from './screens/DashboardScreen'
 import { LogScreen } from './screens/LogScreen'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { DataScreen } from './screens/DataScreen'
 import { ManageScreen } from './screens/ManageScreen'
 import { ExerciseForm, type ExercisePrefill } from './components/ExerciseForm'
 import { ScanChooser } from './components/ScanChooser'
+import { ExercisePicker } from './components/ExercisePicker'
 import { parseScan, codeKey, defaultNameFor } from './lib/catalog'
 import { findExercisesByCode, updateExercise } from './db'
 import type { Exercise } from './types'
 
-type Tab = 'log' | 'history' | 'manage' | 'data'
+type Tab = 'home' | 'log' | 'history' | 'manage' | 'data'
 
 type ScanIntent = { type: 'resolve' } | { type: 'bind'; exerciseId: string }
 
 type Overlay =
   | { kind: 'scanner'; intent: ScanIntent }
   | { kind: 'chooser'; matches: Exercise[]; prefill: ExercisePrefill }
+  | { kind: 'picker' }
   | { kind: 'form'; exercise?: Exercise; prefill?: ExercisePrefill; thenLog?: boolean }
   | null
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'home', label: 'Главная' },
   { id: 'log', label: 'Запись' },
   { id: 'history', label: 'Журнал' },
   { id: 'manage', label: 'Тренажёры' },
@@ -28,7 +32,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 function App() {
-  const [tab, setTab] = useState<Tab>('log')
+  const [tab, setTab] = useState<Tab>('home')
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [overlay, setOverlay] = useState<Overlay>(null)
   const [flash, setFlash] = useState<string | null>(null)
@@ -41,6 +45,14 @@ function App() {
   function startLog(id: string) {
     setActiveExerciseId(id)
     setTab('log')
+  }
+
+  function openScan() {
+    setOverlay({ kind: 'scanner', intent: { type: 'resolve' } })
+  }
+
+  function openCreate(thenLog: boolean) {
+    setOverlay({ kind: 'form', prefill: {}, thenLog })
   }
 
   async function handleScanResult(text: string) {
@@ -75,31 +87,39 @@ function App() {
     <div className="app">
       <header className="app__header">
         <span className="app__brand">DDX Зал</span>
-        <button
-          type="button"
-          className="btn btn--scan"
-          onClick={() => setOverlay({ kind: 'scanner', intent: { type: 'resolve' } })}
-        >
-          Сканировать QR
-        </button>
+        <div className="app__actions">
+          <button type="button" className="btn btn--scan btn--sm" onClick={openScan}>
+            Скан
+          </button>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => setOverlay({ kind: 'picker' })}
+          >
+            Выбрать
+          </button>
+        </div>
       </header>
 
       {flash && <div className="toast">{flash}</div>}
 
       <main className="app__main">
+        {tab === 'home' && (
+          <DashboardScreen onLog={startLog} onScan={openScan} onCreate={() => openCreate(true)} />
+        )}
         {tab === 'log' && (
           <LogScreen
             exerciseId={activeExerciseId}
-            onScanRequest={() => setOverlay({ kind: 'scanner', intent: { type: 'resolve' } })}
-            onPickExercise={() => setTab('manage')}
-            onCreate={() => setOverlay({ kind: 'form', prefill: {}, thenLog: true })}
+            onScanRequest={openScan}
+            onPickExercise={() => setOverlay({ kind: 'picker' })}
+            onCreate={() => openCreate(true)}
           />
         )}
         {tab === 'history' && <HistoryScreen />}
         {tab === 'manage' && (
           <ManageScreen
             onLog={startLog}
-            onCreate={() => setOverlay({ kind: 'form', prefill: {}, thenLog: false })}
+            onCreate={() => openCreate(false)}
             onEdit={(ex) => setOverlay({ kind: 'form', exercise: ex })}
             onRebind={(id) => setOverlay({ kind: 'scanner', intent: { type: 'bind', exerciseId: id } })}
           />
@@ -124,6 +144,17 @@ function App() {
         <Scanner onResult={handleScanResult} onClose={() => setOverlay(null)} />
       )}
 
+      {overlay?.kind === 'picker' && (
+        <ExercisePicker
+          onPick={(id) => {
+            setOverlay(null)
+            startLog(id)
+          }}
+          onCreateNew={() => openCreate(true)}
+          onCancel={() => setOverlay(null)}
+        />
+      )}
+
       {overlay?.kind === 'chooser' && (
         <ScanChooser
           matches={overlay.matches}
@@ -131,9 +162,7 @@ function App() {
             setOverlay(null)
             startLog(id)
           }}
-          onCreateNew={() =>
-            setOverlay({ kind: 'form', prefill: overlay.prefill, thenLog: true })
-          }
+          onCreateNew={() => setOverlay({ kind: 'form', prefill: overlay.prefill, thenLog: true })}
           onCancel={() => setOverlay(null)}
         />
       )}
