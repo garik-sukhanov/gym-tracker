@@ -1,4 +1,7 @@
-// Тренажёр из каталога (собирается в Фазе 0 из QR-страниц DDX).
+// Единица ввода веса. Хранение всегда в кг (canonical).
+export type Unit = 'kg' | 'lbs'
+
+// Тренажёр из встроенного каталога (Фаза 0, собирается из QR-страниц DDX).
 export interface Machine {
   number: number
   slug: string
@@ -9,23 +12,33 @@ export interface Machine {
   url?: string
 }
 
-// Тренажёр, выбранный прямо сейчас (после скана или вручную).
-export interface ActiveMachine {
-  number: number | null
+// Упражнение — то, против чего пишем подходы.
+// На один QR-код может приходиться несколько упражнений (многозадачный тренажёр).
+// qrCode === null — упражнение без кода (гантели, свободные веса и т.п.).
+export interface Exercise {
+  id: string
   name: string
-  description: string | null
-  url: string | null
-  known: boolean
-  raw: string
+  qrCode: string | null // нормализованный ключ скана (см. lib/scan.ts codeKey)
+  machineNumber: number | null
+  unit: Unit // единица ввода по умолчанию
+  multiplier: number // множитель веса (1 — обычно, 2 — вес навешивается на каждую руку)
+  note: string | null
+  createdAt: string
+  updatedAt: string
+  deleted: number // 0 | 1
 }
 
-// Один записанный подход.
+// Один записанный подход. weight — итоговый вес в кг (entryWeight * множитель, переведённый в кг).
 export interface WorkoutSet {
   id: string
   sessionId: string
+  exerciseId: string
   machineNumber: number | null
-  machineName: string
-  weight: number | null
+  machineName: string // снимок имени на момент записи (для экспорта и устойчивости)
+  weight: number | null // итог в кг (canonical) — используется в статистике и экспорте
+  entryWeight: number | null // что ввёл пользователь (в entryUnit, на одну сторону, до множителя)
+  entryUnit: Unit
+  multiplier: number
   reps: number | null
   setIndex: number
   rpe: number | null
@@ -36,7 +49,7 @@ export interface WorkoutSet {
   synced: number // 0 | 1
 }
 
-// Имя тренажёра, заданное пользователем для номера (личный каталог «назвал один раз»).
+// Личный каталог «назвал один раз» (legacy v2, мигрирует в exercises на v3).
 export interface MachineName {
   number: number
   name: string

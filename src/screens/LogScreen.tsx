@@ -1,85 +1,112 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  db,
-  addSet,
-  softDeleteSet,
-  lastSetForMachine,
-  getMachineName,
-  setMachineName,
-} from '../db'
+import { db, addSet, softDeleteSet, lastSetForExercise, getExercise, updateExercise } from '../db'
 import { formatTime } from '../lib/format'
-import type { ActiveMachine, WorkoutSet } from '../types'
+import { Stepper, SegmentedControl } from '../components/controls'
+import { fromKg, toKg, trimNum, unitLabel, WEIGHT_STEP, REPS_STEP } from '../lib/units'
+import type { Unit, WorkoutSet } from '../types'
 
 interface Props {
-  machine: ActiveMachine | null
+  exerciseId: string | null
   onScanRequest: () => void
+  onPickExercise: () => void
+  onCreate: () => void
 }
 
-export function LogScreen({ machine, onScanRequest }: Props) {
-  const [name, setName] = useState('')
-  const [weight, setWeight] = useState('')
+export function LogScreen({ exerciseId, onScanRequest, onPickExercise, onCreate }: Props) {
+  const exercise = useLiveQuery(
+    () => (exerciseId ? getExercise(exerciseId) : Promise.resolve(undefined)),
+    [exerciseId],
+  )
+
+  const [unit, setUnit] = useState<Unit>('kg')
+  const [multiplier, setMultiplier] = useState(1)
+  const [weight, setWeight] = useState('') // введённое значение в текущей единице, на одну сторону
   const [reps, setReps] = useState('')
   const [flash, setFlash] = useState(false)
 
+  // Смена упражнения: подставляем его настройки и последний подход.
   useEffect(() => {
-    if (!machine) return
+    if (!exercise) return
     let cancelled = false
+    const u = exercise.unit
+    const m = exercise.multiplier || 1
+    setUnit(u)
+    setMultiplier(m)
     ;(async () => {
-      let resolved = machine.name
-      if (machine.number != null) {
-        const custom = await getMachineName(machine.number)
-        if (custom) resolved = custom
-      }
+      const last = await lastSetForExercise(exercise.id)
       if (cancelled) return
-      setName(resolved)
-      const last = await lastSetForMachine(resolved)
-      if (last && !cancelled) {
-        setWeight(last.weight != null ? String(last.weight) : '')
-        setReps(last.reps != null ? String(last.reps) : '')
+      if (last && last.weight != null) {
+        const perSideKg = last.weight / m
+        setWeight(trimNum(Math.round(fromKg(perSideKg, u) * 100) / 100))
+      } else {
+        setWeight('')
       }
+      setReps(last?.reps != null ? String(last.reps) : '')
     })()
     return () => {
       cancelled = true
     }
-  }, [machine])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise?.id])
 
   const sets = useLiveQuery(
     async () => {
-      const key = name.trim()
-      if (!key) return []
+      if (!exercise) return [] as WorkoutSet[]
       const all = await db.sets
-        .where('machineName')
-        .equals(key)
+        .where('exerciseId')
+        .equals(exercise.id)
         .filter((s) => s.deleted === 0)
         .toArray()
       all.sort((a, b) => b.performedAt.localeCompare(a.performedAt))
       return all.slice(0, 15)
     },
-    [name],
+    [exercise?.id],
     [] as WorkoutSet[],
   )
 
+  function changeUnit(next: Unit) {
+    const n = num(weight)
+    if (n != null) {
+      const kg = toKg(n, unit)
+      setWeight(trimNum(Math.round(fromKg(kg, next) * 100) / 100))
+    }
+    setUnit(next)
+  }
+
+  const entry = num(weight)
+  const totalKg = entry == null ? null : Math.round(toKg(entry, unit) * multiplier * 100) / 100
+
   async function save() {
-    const key = name.trim()
-    if (!key) return
+    if (!exercise) return
     await addSet({
-      machineNumber: machine?.number ?? null,
-      machineName: key,
-      weight: num(weight),
+      exerciseId: exercise.id,
+      machineName: exercise.name,
+      machineNumber: exercise.machineNumber,
+      entryWeight: entry,
+      entryUnit: unit,
+      multiplier,
       reps: num(reps),
     })
-    if (machine?.number != null) await setMachineName(machine.number, key)
+    if (exercise.unit !== unit || exercise.multiplier !== multiplier) {
+      await updateExercise(exercise.id, { unit, multiplier })
+    }
     setFlash(true)
     window.setTimeout(() => setFlash(false), 900)
   }
 
-  if (!machine && !name) {
+  if (!exercise) {
     return (
       <div className="screen screen--empty">
-        <p className="muted">Отсканируй QR на тренажёре, чтобы начать запись подходов.</p>
+        <p className="muted">Отсканируй QR на тренажёре или выбери упражнение.</p>
         <button type="button" className="btn btn--primary btn--big" onClick={onScanRequest}>
           Сканировать QR
+        </button>
+        <button type="button" className="btn" onClick={onPickExercise}>
+          Выбрать из списка
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onCreate}>
+          + Создать без QR
         </button>
       </div>
     )
@@ -88,40 +115,58 @@ export function LogScreen({ machine, onScanRequest }: Props) {
   return (
     <div className="screen">
       <section className="card">
-        <input
-          className="field field--title"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Название тренажёра"
-        />
-        {machine?.number != null && <span className="badge">№{machine.number}</span>}
-        {machine && !machine.known && machine.url && (
-          <a className="muted small" href={machine.url} target="_blank" rel="noreferrer">
-            {machine.url}
-          </a>
-        )}
-        {machine?.description && <p className="muted small">{machine.description}</p>}
+        <div className="card__head">
+          <h2 className="card__title card__title--lg">{exercise.name}</h2>
+          {exercise.machineNumber != null && <span className="badge">№{exercise.machineNumber}</span>}
+        </div>
 
         <div className="row">
-          <label className="field-group">
-            Вес, кг
-            <input
-              className="field field--num"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
+          <div className="field-group">
+            Единица
+            <SegmentedControl<Unit>
+              value={unit}
+              ariaLabel="Единица ввода"
+              options={[
+                { value: 'kg', label: 'кг' },
+                { value: 'lbs', label: 'lbs' },
+              ]}
+              onChange={changeUnit}
             />
-          </label>
-          <label className="field-group">
-            Повторы
-            <input
-              className="field field--num"
-              inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
+          </div>
+          <div className="field-group">
+            Множитель
+            <SegmentedControl<number>
+              value={multiplier}
+              ariaLabel="Множитель веса"
+              options={[
+                { value: 1, label: '×1' },
+                { value: 2, label: '×2' },
+              ]}
+              onChange={setMultiplier}
             />
-          </label>
+          </div>
         </div>
+
+        <div className="row row--steppers">
+          <Stepper
+            label={`Вес, ${unitLabel(unit)}${multiplier > 1 ? ` (×${multiplier})` : ''}`}
+            value={weight}
+            onChange={setWeight}
+            step={WEIGHT_STEP[unit]}
+            inputMode="decimal"
+          />
+          <Stepper
+            label="Повторы"
+            value={reps}
+            onChange={setReps}
+            step={REPS_STEP}
+            inputMode="numeric"
+          />
+        </div>
+
+        {totalKg != null && (unit === 'lbs' || multiplier > 1) && (
+          <p className="muted small center">Итого: {trimNum(totalKg)} кг</p>
+        )}
 
         <button type="button" className="btn btn--primary btn--big" onClick={save}>
           {flash ? 'Записано ✓' : 'Записать подход'}
@@ -129,7 +174,7 @@ export function LogScreen({ machine, onScanRequest }: Props) {
       </section>
 
       <section className="card">
-        <h2 className="card__title">Сегодня · {name.trim() || 'тренажёр'}</h2>
+        <h2 className="card__title">Сегодня · {exercise.name}</h2>
         {sets.length === 0 ? (
           <p className="muted small">Пока нет подходов.</p>
         ) : (
@@ -140,6 +185,13 @@ export function LogScreen({ machine, onScanRequest }: Props) {
                 <span className="setlist__main">
                   {s.weight ?? '—'} кг × {s.reps ?? '—'}
                 </span>
+                {(s.multiplier > 1 || s.entryUnit === 'lbs') && s.entryWeight != null && (
+                  <span className="muted small">
+                    {trimNum(s.entryWeight)}
+                    {unitLabel(s.entryUnit)}
+                    {s.multiplier > 1 ? `×${s.multiplier}` : ''}
+                  </span>
+                )}
                 <span className="muted small">{formatTime(s.performedAt)}</span>
                 <button
                   type="button"

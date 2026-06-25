@@ -31,6 +31,22 @@ export function parseScan(text: string): ScanResult {
   return { raw, url, number, machine: findMachineByNumber(number) ?? null }
 }
 
+// Канонический ключ кода для привязки упражнений к QR.
+// Один и тот же физический код всегда даёт один ключ, чтобы по нему находить
+// все упражнения, созданные на этом тренажёре.
+export function codeKey(scan: ScanResult): string {
+  if (scan.number != null) return `n:${scan.number}`
+  if (scan.url) return `u:${scan.url.replace(/\/+$/, '')}`
+  return `r:${scan.raw}`
+}
+
+// Имя по умолчанию для нового упражнения, созданного из скана.
+export function defaultNameFor(scan: ScanResult): string {
+  if (scan.machine?.name) return scan.machine.name
+  if (scan.number != null) return `Тренажёр №${scan.number}`
+  return 'Новое упражнение'
+}
+
 function looksLikeUrl(t: string): boolean {
   return /^https?:\/\//i.test(t)
 }

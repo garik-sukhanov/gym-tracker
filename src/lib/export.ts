@@ -1,7 +1,9 @@
 import { db } from '../db'
 import { formatDay, formatTime } from './format'
+import { unitLabel } from './units'
 
 interface ExportRow {
+  ISO: string // машинная метка времени — для точного реимпорта
   Дата: string
   Время: string
   Тренажёр: string
@@ -9,6 +11,9 @@ interface ExportRow {
   Подход: number
   'Вес, кг': number | string
   Повторы: number | string
+  'Ед.': string
+  '×': number
+  Введено: number | string
   RPE: number | string
   Заметка: string
 }
@@ -17,6 +22,7 @@ async function buildRows(): Promise<ExportRow[]> {
   const sets = await db.sets.filter((s) => s.deleted === 0).toArray()
   sets.sort((a, b) => a.performedAt.localeCompare(b.performedAt))
   return sets.map((s) => ({
+    ISO: s.performedAt,
     Дата: formatDay(s.performedAt),
     Время: formatTime(s.performedAt),
     Тренажёр: s.machineName,
@@ -24,6 +30,9 @@ async function buildRows(): Promise<ExportRow[]> {
     Подход: s.setIndex,
     'Вес, кг': s.weight ?? '',
     Повторы: s.reps ?? '',
+    'Ед.': unitLabel(s.entryUnit ?? 'kg'),
+    '×': s.multiplier ?? 1,
+    Введено: s.entryWeight ?? '',
     RPE: s.rpe ?? '',
     Заметка: s.note ?? '',
   }))
