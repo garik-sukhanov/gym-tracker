@@ -9,12 +9,13 @@ export interface ExercisePrefill {
   machineNumber?: number | null
   unit?: Unit
   multiplier?: number
+  existingOnCode?: string[] // имена упражнений, уже привязанных к этому коду
 }
 
 interface Props {
   exercise?: Exercise // режим редактирования
   prefill?: ExercisePrefill // режим создания
-  onSaved: (id: string) => void
+  onSaved: (id: string, opts?: { bindQr?: boolean }) => void
   onCancel: () => void
 }
 
@@ -28,6 +29,11 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
 
   const qrCode = exercise?.qrCode ?? prefill?.qrCode ?? null
   const machineNumber = exercise?.machineNumber ?? prefill?.machineNumber ?? null
+  const existingOnCode = prefill?.existingOnCode ?? []
+
+  // Выбор «Без QR / С QR» — только при ручном создании (нет ни упражнения, ни кода из скана).
+  const canChooseQr = !exercise && !qrCode
+  const [wantsQr, setWantsQr] = useState(false)
 
   async function save() {
     const trimmed = name.trim()
@@ -49,7 +55,7 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
         qrCode,
         machineNumber,
       })
-      onSaved(ex.id)
+      onSaved(ex.id, { bindQr: canChooseQr && wantsQr })
     }
   }
 
@@ -57,6 +63,13 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
     <div className="modal" role="dialog" aria-modal="true">
       <div className="modal__sheet card">
         <h2 className="card__title">{exercise ? 'Изменить упражнение' : 'Новое упражнение'}</h2>
+
+        {existingOnCode.length > 0 && (
+          <p className="notice">
+            На этом коде уже есть: {existingOnCode.join(', ')}. Создаём ещё одно — назови иначе, чтобы
+            различать.
+          </p>
+        )}
 
         <label className="field-group">
           Название
@@ -105,20 +118,40 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
           />
         </label>
 
-        <p className="muted small">
-          {machineNumber != null
-            ? `Привязано к QR · №${machineNumber}`
-            : qrCode
-              ? 'Привязано к QR-коду'
-              : 'Без QR-кода'}
-        </p>
+        {canChooseQr ? (
+          <div className="field-group">
+            QR-код тренажёра
+            <SegmentedControl<'no' | 'yes'>
+              value={wantsQr ? 'yes' : 'no'}
+              ariaLabel="Привязка к QR-коду"
+              options={[
+                { value: 'no', label: 'Без QR' },
+                { value: 'yes', label: 'С QR — сканировать' },
+              ]}
+              onChange={(v) => setWantsQr(v === 'yes')}
+            />
+            {wantsQr && (
+              <span className="muted small">
+                После сохранения откроется сканер, чтобы привязать код.
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="muted small">
+            {machineNumber != null
+              ? `Привязано к QR · №${machineNumber}`
+              : qrCode
+                ? 'Привязано к QR-коду'
+                : 'Без QR-кода'}
+          </p>
+        )}
 
         <div className="row">
           <button type="button" className="btn" onClick={onCancel}>
             Отмена
           </button>
           <button type="button" className="btn btn--primary" onClick={save} disabled={!name.trim()}>
-            Сохранить
+            {canChooseQr && wantsQr ? 'Сохранить и сканировать' : 'Сохранить'}
           </button>
         </div>
       </div>

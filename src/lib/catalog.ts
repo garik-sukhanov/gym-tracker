@@ -47,6 +47,19 @@ export function defaultNameFor(scan: ScanResult): string {
   return 'Новое упражнение'
 }
 
+// Имя, не конфликтующее с уже занятыми (другие упражнения на том же коде).
+// Если базовое занято — добавляем число в конец: «Тяга сидя» → «Тяга сидя 2».
+export function suggestUniqueName(base: string, taken: string[]): string {
+  const norm = (s: string) => s.trim().toLowerCase()
+  const used = new Set(taken.map(norm))
+  if (!used.has(norm(base))) return base
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base} ${i}`
+    if (!used.has(norm(candidate))) return candidate
+  }
+  return base
+}
+
 function looksLikeUrl(t: string): boolean {
   return /^https?:\/\//i.test(t)
 }

@@ -4,16 +4,23 @@ import { db, addSet, softDeleteSet, lastSetForExercise, getExercise, updateExerc
 import { formatTime } from '../lib/format'
 import { Stepper, SegmentedControl } from '../components/controls'
 import { fromKg, toKg, trimNum, unitLabel, WEIGHT_STEP, REPS_STEP } from '../lib/units'
-import type { Unit, WorkoutSet } from '../types'
+import type { Exercise, Unit, WorkoutSet } from '../types'
 
 interface Props {
   exerciseId: string | null
   onScanRequest: () => void
   onPickExercise: () => void
   onCreate: () => void
+  onAddVariant: (ex: Exercise) => void
 }
 
-export function LogScreen({ exerciseId, onScanRequest, onPickExercise, onCreate }: Props) {
+export function LogScreen({
+  exerciseId,
+  onScanRequest,
+  onPickExercise,
+  onCreate,
+  onAddVariant,
+}: Props) {
   const exercise = useLiveQuery(
     () => (exerciseId ? getExercise(exerciseId) : Promise.resolve(undefined)),
     [exerciseId],
@@ -119,6 +126,12 @@ export function LogScreen({ exerciseId, onScanRequest, onPickExercise, onCreate 
           <h2 className="card__title card__title--lg">{exercise.name}</h2>
           {exercise.machineNumber != null && <span className="badge">№{exercise.machineNumber}</span>}
         </div>
+
+        {exercise.qrCode && (
+          <button type="button" className="btn--link" onClick={() => onAddVariant(exercise)}>
+            + Другое упражнение на этом тренажёре
+          </button>
+        )}
 
         <div className="row">
           <div className="field-group">

@@ -10,14 +10,14 @@ import { MeasureScreen } from './screens/MeasureScreen'
 import { ExerciseForm, type ExercisePrefill } from './components/ExerciseForm'
 import { ScanChooser } from './components/ScanChooser'
 import { ExercisePicker } from './components/ExercisePicker'
-import { parseScan, codeKey, defaultNameFor } from './lib/catalog'
+import { parseScan, codeKey, defaultNameFor, suggestUniqueName } from './lib/catalog'
 import { findExercisesByCode, updateExercise } from './db'
 import { useTheme } from './lib/theme'
 import type { Exercise } from './types'
 
 type Tab = 'home' | 'log' | 'history' | 'manage' | 'measure' | 'data'
 
-type ScanIntent = { type: 'resolve' } | { type: 'bind'; exerciseId: string }
+type ScanIntent = { type: 'resolve' } | { type: 'bind'; exerciseId: string; thenLog?: boolean }
 
 type Overlay =
   | { kind: 'scanner'; intent: ScanIntent }
@@ -65,18 +65,26 @@ function App() {
     const key = codeKey(scan)
 
     if (intent.type === 'bind') {
+      const others = (await findExercisesByCode(key)).filter((e) => e.id !== intent.exerciseId)
       await updateExercise(intent.exerciseId, { qrCode: key, machineNumber: scan.number })
       setOverlay(null)
-      toast('QR привязан')
+      toast(
+        others.length
+          ? `QR привязан · на коде уже: ${others.map((e) => e.name).join(', ')}`
+          : 'QR привязан',
+      )
+      if (intent.thenLog) startLog(intent.exerciseId)
       return
     }
 
+    const matches = await findExercisesByCode(key)
+    const names = matches.map((m) => m.name)
     const prefill: ExercisePrefill = {
-      name: defaultNameFor(scan),
+      name: suggestUniqueName(defaultNameFor(scan), names),
       qrCode: key,
       machineNumber: scan.number,
+      existingOnCode: names,
     }
-    const matches = await findExercisesByCode(key)
     if (matches.length === 1) {
       setOverlay(null)
       startLog(matches[0].id)
@@ -85,6 +93,23 @@ function App() {
     } else {
       setOverlay({ kind: 'form', prefill, thenLog: true })
     }
+  }
+
+  // «+ Другое упражнение на этом тренажёре» — добавить ещё одно упражнение на тот же код.
+  async function addVariantOnCode(ex: Exercise) {
+    if (!ex.qrCode) return
+    const matches = await findExercisesByCode(ex.qrCode)
+    const names = matches.map((m) => m.name)
+    setOverlay({
+      kind: 'form',
+      prefill: {
+        name: suggestUniqueName(ex.name, names),
+        qrCode: ex.qrCode,
+        machineNumber: ex.machineNumber,
+        existingOnCode: names,
+      },
+      thenLog: true,
+    })
   }
 
   return (
@@ -125,6 +150,7 @@ function App() {
             onScanRequest={openScan}
             onPickExercise={() => setOverlay({ kind: 'picker' })}
             onCreate={() => openCreate(true)}
+            onAddVariant={addVariantOnCode}
           />
         )}
         {tab === 'history' && <HistoryScreen />}
@@ -185,10 +211,15 @@ function App() {
         <ExerciseForm
           exercise={overlay.exercise}
           prefill={overlay.prefill}
-          onSaved={(id) => {
-            const thenLog = overlay.thenLog
-            setOverlay(null)
-            if (thenLog) startLog(id)
+          onSaved={(id, opts) => {
+            const thenLog = overlay.kind === 'form' && overlay.thenLog
+            if (opts?.bindQr) {
+              // «С QR» при ручном создании — сразу открываем сканер для привязки кода.
+              setOverlay({ kind: 'scanner', intent: { type: 'bind', exerciseId: id, thenLog: true } })
+            } else {
+              setOverlay(null)
+              if (thenLog) startLog(id)
+            }
           }}
           onCancel={() => setOverlay(null)}
         />
