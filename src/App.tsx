@@ -1,11 +1,12 @@
 import { useState, type FC } from 'react'
 import { Scanner } from './components/Scanner'
-import { HomeIcon, JournalIcon, DumbbellIcon, DataIcon } from './components/icons'
+import { HomeIcon, JournalIcon, DumbbellIcon, RulerIcon, DataIcon } from './components/icons'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { LogScreen } from './screens/LogScreen'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { DataScreen } from './screens/DataScreen'
 import { ManageScreen } from './screens/ManageScreen'
+import { MeasureScreen } from './screens/MeasureScreen'
 import { ExerciseForm, type ExercisePrefill } from './components/ExerciseForm'
 import { ScanChooser } from './components/ScanChooser'
 import { ExercisePicker } from './components/ExercisePicker'
@@ -14,7 +15,7 @@ import { findExercisesByCode, updateExercise } from './db'
 import { useTheme } from './lib/theme'
 import type { Exercise } from './types'
 
-type Tab = 'home' | 'log' | 'history' | 'manage' | 'data'
+type Tab = 'home' | 'log' | 'history' | 'manage' | 'measure' | 'data'
 
 type ScanIntent = { type: 'resolve' } | { type: 'bind'; exerciseId: string }
 
@@ -29,6 +30,7 @@ const TABS: { id: Tab; label: string; Icon: FC<{ className?: string }> }[] = [
   { id: 'home', label: 'Главная', Icon: HomeIcon },
   { id: 'history', label: 'Журнал', Icon: JournalIcon },
   { id: 'manage', label: 'Тренажёры', Icon: DumbbellIcon },
+  { id: 'measure', label: 'Замеры', Icon: RulerIcon },
   { id: 'data', label: 'Данные', Icon: DataIcon },
 ]
 
@@ -134,6 +136,7 @@ function App() {
             onRebind={(id) => setOverlay({ kind: 'scanner', intent: { type: 'bind', exerciseId: id } })}
           />
         )}
+        {tab === 'measure' && <MeasureScreen />}
         {tab === 'data' && <DataScreen />}
       </main>
 

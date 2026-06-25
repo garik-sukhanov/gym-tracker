@@ -56,6 +56,18 @@ export interface MachineName {
   updatedAt: string
 }
 
+// Замер тела: вес или обхват/состав. metric — ключ из lib/measurements.ts.
+export interface Measurement {
+  id: string
+  metric: string
+  value: number
+  unit: string
+  performedAt: string
+  note: string | null
+  updatedAt: string
+  deleted: number // 0 | 1
+}
+
 // Тренировочная сессия (один поход в зал).
 export interface Session {
   id: string

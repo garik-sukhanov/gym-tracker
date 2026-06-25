@@ -439,6 +439,63 @@ body {
   white-space: nowrap;
 }
 
+/* --- Замеры -------------------------------------------------------------- */
+
+.measure-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tile__label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tile__val {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.tile__val small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tile__delta {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tile__delta.is-up {
+  color: var(--accent);
+}
+
+.tile__delta.is-down {
+  color: var(--accent-2);
+}
+
 /* --- Статистика ---------------------------------------------------------- */
 
 .stat-row {

@@ -1,6 +1,6 @@
 import { db } from '../db'
 import { newId, nowIso } from './id'
-import type { Exercise, Session, Unit, WorkoutSet } from '../types'
+import type { Exercise, Measurement, Session, Unit, WorkoutSet } from '../types'
 
 const APP = 'ddx-gym-tracker'
 const BACKUP_VERSION = 1
@@ -12,6 +12,7 @@ export interface Backup {
   exercises: Exercise[]
   sessions: Session[]
   sets: WorkoutSet[]
+  measurements: Measurement[]
 }
 
 export interface ImportResult {
@@ -36,10 +37,11 @@ function download(content: string, filename: string, type: string) {
 
 // Полная резервная копия — упражнения, сессии, подходы. Точный round-trip.
 export async function exportJson(): Promise<number> {
-  const [exercises, sessions, sets] = await Promise.all([
+  const [exercises, sessions, sets, measurements] = await Promise.all([
     db.exercises.toArray(),
     db.sessions.toArray(),
     db.sets.toArray(),
+    db.measurements.toArray(),
   ])
   const backup: Backup = {
     app: APP,
@@ -48,6 +50,7 @@ export async function exportJson(): Promise<number> {
     exercises,
     sessions,
     sets,
+    measurements,
   }
   download(JSON.stringify(backup, null, 2), `ddx-backup-${stamp()}.json`, 'application/json')
   return sets.length
@@ -72,12 +75,21 @@ async function importJson(text: string): Promise<ImportResult> {
   const exercises = (data.exercises ?? []) as Exercise[]
   const sessions = (data.sessions ?? []) as Session[]
   const sets = data.sets as WorkoutSet[]
+  const measurements = (data.measurements ?? []) as Measurement[]
 
-  await db.transaction('rw', db.exercises, db.sessions, db.sets, async () => {
-    if (exercises.length) await db.exercises.bulkPut(exercises)
-    if (sessions.length) await db.sessions.bulkPut(sessions)
-    if (sets.length) await db.sets.bulkPut(sets)
-  })
+  await db.transaction(
+    'rw',
+    db.exercises,
+    db.sessions,
+    db.sets,
+    db.measurements,
+    async () => {
+      if (exercises.length) await db.exercises.bulkPut(exercises)
+      if (sessions.length) await db.sessions.bulkPut(sessions)
+      if (sets.length) await db.sets.bulkPut(sets)
+      if (measurements.length) await db.measurements.bulkPut(measurements)
+    },
+  )
   return { exercises: exercises.length, sessions: sessions.length, sets: sets.length }
 }
 

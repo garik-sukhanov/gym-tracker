@@ -1,6 +1,7 @@
 import { db } from '../db'
 import { formatDay, formatTime } from './format'
 import { unitLabel } from './units'
+import { metricDef } from './measurements'
 
 interface ExportRow {
   ISO: string // машинная метка времени — для точного реимпорта
@@ -38,6 +39,26 @@ async function buildRows(): Promise<ExportRow[]> {
   }))
 }
 
+interface MeasureRow {
+  ISO: string
+  Дата: string
+  Метрика: string
+  Значение: number
+  'Ед.': string
+}
+
+async function buildMeasureRows(): Promise<MeasureRow[]> {
+  const ms = await db.measurements.filter((m) => m.deleted === 0).toArray()
+  ms.sort((a, b) => a.performedAt.localeCompare(b.performedAt))
+  return ms.map((m) => ({
+    ISO: m.performedAt,
+    Дата: formatDay(m.performedAt),
+    Метрика: metricDef(m.metric).label,
+    Значение: m.value,
+    'Ед.': m.unit,
+  }))
+}
+
 function stamp(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -45,9 +66,14 @@ function stamp(): string {
 export async function exportXlsx(): Promise<number> {
   const XLSX = await import('xlsx')
   const rows = await buildRows()
-  const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Тренировки')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Тренировки')
+
+  const mrows = await buildMeasureRows()
+  if (mrows.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mrows), 'Замеры')
+  }
+
   XLSX.writeFile(wb, `ddx-trenirovki-${stamp()}.xlsx`)
   return rows.length
 }

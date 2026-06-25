@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Exercise, MachineName, Session, Unit, WorkoutSet } from './types'
+import type { Exercise, MachineName, Measurement, Session, Unit, WorkoutSet } from './types'
 import { newId, nowIso } from './lib/id'
 import { toKg } from './lib/units'
 
@@ -8,6 +8,7 @@ export class GymDB extends Dexie {
   sessions!: Table<Session, string>
   machineNames!: Table<MachineName, number>
   exercises!: Table<Exercise, string>
+  measurements!: Table<Measurement, string>
 
   constructor() {
     super('ddx-gym-tracker')
@@ -63,6 +64,14 @@ export class GymDB extends Dexie {
           })
         }
       })
+    // v4: замеры тела (вес, обхваты, состав).
+    this.version(4).stores({
+      sets: 'id, sessionId, exerciseId, machineNumber, machineName, performedAt, updatedAt, synced, deleted',
+      sessions: 'id, startedAt, updatedAt, synced, deleted',
+      machineNames: 'number, updatedAt',
+      exercises: 'id, qrCode, machineNumber, name, updatedAt, deleted',
+      measurements: 'id, metric, performedAt, updatedAt, deleted',
+    })
   }
 }
 
@@ -216,4 +225,35 @@ export async function lastSetForExercise(exerciseId: string): Promise<WorkoutSet
     .toArray()
   sets.sort((a, b) => b.performedAt.localeCompare(a.performedAt))
   return sets[0]
+}
+
+// --- Замеры ---------------------------------------------------------------
+
+export interface MeasurementInput {
+  metric: string
+  value: number
+  unit: string
+}
+
+export async function addMeasurements(
+  performedAt: string,
+  entries: MeasurementInput[],
+): Promise<number> {
+  const now = nowIso()
+  const rows: Measurement[] = entries.map((e) => ({
+    id: newId(),
+    metric: e.metric,
+    value: e.value,
+    unit: e.unit,
+    performedAt,
+    note: null,
+    updatedAt: now,
+    deleted: 0,
+  }))
+  if (rows.length) await db.measurements.bulkAdd(rows)
+  return rows.length
+}
+
+export async function softDeleteMeasurement(id: string): Promise<void> {
+  await db.measurements.update(id, { deleted: 1, updatedAt: nowIso() })
 }
