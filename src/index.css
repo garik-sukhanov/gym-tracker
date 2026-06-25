@@ -15,8 +15,24 @@
   color-scheme: dark;
 }
 
+:root[data-theme='light'] {
+  --bg: #f0f7f7;
+  --surface: #ffffff;
+  --surface-2: #e4eeee;
+  --border: #d1ddde;
+  --text: #062327;
+  --muted: #6a7a7c;
+  --accent: #ff7d20;
+  --accent-strong: #e0660a;
+  --accent-2: #0f9b9b;
+  --danger: #d92d20;
+  --on-accent: #2a1300;
+  color-scheme: light;
+}
+
+/* Запасной вариант, если JS не успел проставить data-theme. */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #f0f7f7;
     --surface: #ffffff;
     --surface-2: #e4eeee;
@@ -216,6 +232,12 @@ body {
 .btn--sm {
   padding: 9px 12px;
   font-size: 14px;
+}
+
+.btn--icon {
+  padding: 9px 11px;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .btn--ghost {

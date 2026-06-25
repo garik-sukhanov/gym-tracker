@@ -10,6 +10,7 @@ import { ScanChooser } from './components/ScanChooser'
 import { ExercisePicker } from './components/ExercisePicker'
 import { parseScan, codeKey, defaultNameFor } from './lib/catalog'
 import { findExercisesByCode, updateExercise } from './db'
+import { useTheme } from './lib/theme'
 import type { Exercise } from './types'
 
 type Tab = 'home' | 'log' | 'history' | 'manage' | 'data'
@@ -36,6 +37,7 @@ function App() {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [overlay, setOverlay] = useState<Overlay>(null)
   const [flash, setFlash] = useState<string | null>(null)
+  const [theme, setTheme] = useTheme()
 
   function toast(msg: string) {
     setFlash(msg)
@@ -88,6 +90,14 @@ function App() {
       <header className="app__header">
         <span className="app__brand">DDX Зал</span>
         <div className="app__actions">
+          <button
+            type="button"
+            className="btn btn--sm btn--icon"
+            aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <button type="button" className="btn btn--scan btn--sm" onClick={openScan}>
             Скан
           </button>

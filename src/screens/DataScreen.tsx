@@ -1,15 +1,21 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { exportXlsx, exportCsv } from '../lib/export'
 import { exportJson, importFile } from '../lib/backup'
+import { checkForUpdate, storageInfo, type StorageInfo } from '../lib/pwa'
 
 export function DataScreen() {
   const total = useLiveQuery(() => db.sets.filter((s) => s.deleted === 0).count(), [], 0)
   const exCount = useLiveQuery(() => db.exercises.filter((e) => e.deleted === 0).count(), [], 0)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [storage, setStorage] = useState<StorageInfo>({ persisted: false, usageMb: null })
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    storageInfo().then(setStorage)
+  }, [])
 
   async function run(fn: () => Promise<unknown>, ok: (r: unknown) => string) {
     setBusy(true)
@@ -92,6 +98,28 @@ export function DataScreen() {
           onClick={() => fileRef.current?.click()}
         >
           Выбрать файл
+        </button>
+      </section>
+
+      <section className="card">
+        <h2 className="card__title">Хранилище и обновления</h2>
+        <p className="muted small">
+          {storage.persisted
+            ? '✓ Данные защищены от автоочистки браузером.'
+            : 'Обычный режим: при сильной нехватке места браузер может очистить данные.'}
+          {storage.usageMb != null ? ` Занято ~${storage.usageMb} МБ.` : ''}
+        </p>
+        <p className="muted small">
+          Данные хранятся на телефоне и <b>сохраняются при обновлении приложения</b>. На всякий
+          случай периодически делай резервную копию (.json) выше.
+        </p>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => checkForUpdate().finally(() => location.reload())}
+        >
+          Обновить приложение
         </button>
       </section>
 
