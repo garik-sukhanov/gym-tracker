@@ -30,8 +30,15 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
       },
       devOptions: { enabled: false },
     }),
   ],
+  define: {
+    // штамп времени сборки — чтобы видеть, какая версия загружена
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
 })

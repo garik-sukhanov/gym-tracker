@@ -121,6 +121,7 @@ export function DataScreen() {
         >
           Обновить приложение
         </button>
+        <p className="muted small center">Версия: {buildLabel()}</p>
       </section>
 
       {msg && <p className="flash">{msg}</p>}
@@ -130,4 +131,17 @@ export function DataScreen() {
 
 function describe(e: unknown): string {
   return (e as { message?: string }).message ?? 'неизвестно'
+}
+
+function buildLabel(): string {
+  try {
+    return new Date(__BUILD_TIME__).toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
 }
