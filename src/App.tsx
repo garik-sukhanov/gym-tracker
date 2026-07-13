@@ -115,7 +115,7 @@ function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <span className="app__brand">DDX Зал</span>
+        <span className="app__brand">Трекер</span>
         <div className="app__actions">
           <button
             type="button"

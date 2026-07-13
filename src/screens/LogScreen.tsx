@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, addSet, softDeleteSet, lastSetForExercise, getExercise, updateExercise } from '../db'
-import { formatTime } from '../lib/format'
+import { dayKey, formatTime, setMainLine } from '../lib/format'
+import { nowIso } from '../lib/id'
 import { Stepper, SegmentedControl } from '../components/controls'
 import { fromKg, toKg, trimNum, unitLabel, WEIGHT_STEP, REPS_STEP } from '../lib/units'
 import type { Exercise, Unit, WorkoutSet } from '../types'
@@ -57,16 +58,19 @@ export function LogScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise?.id])
 
+  // Только подходы за сегодня — блок называется «Сегодня». День считаем так же,
+  // как журнал (dayKey), чтобы совпадало с группировкой в истории.
   const sets = useLiveQuery(
     async () => {
       if (!exercise) return [] as WorkoutSet[]
+      const today = dayKey(nowIso())
       const all = await db.sets
         .where('exerciseId')
         .equals(exercise.id)
-        .filter((s) => s.deleted === 0)
+        .filter((s) => s.deleted === 0 && dayKey(s.performedAt) === today)
         .toArray()
       all.sort((a, b) => b.performedAt.localeCompare(a.performedAt))
-      return all.slice(0, 15)
+      return all.slice(0, 30)
     },
     [exercise?.id],
     [] as WorkoutSet[],
@@ -93,6 +97,7 @@ export function LogScreen({
       entryWeight: entry,
       entryUnit: unit,
       multiplier,
+      bodyweight: exercise.bodyweight ? 1 : 0,
       reps: num(reps),
     })
     if (exercise.unit !== unit || exercise.multiplier !== multiplier) {
@@ -125,6 +130,7 @@ export function LogScreen({
         <div className="card__head">
           <h2 className="card__title card__title--lg">{exercise.name}</h2>
           {exercise.machineNumber != null && <span className="badge">№{exercise.machineNumber}</span>}
+          {exercise.bodyweight ? <span className="badge">свой вес</span> : null}
         </div>
 
         {exercise.qrCode && (
@@ -162,7 +168,7 @@ export function LogScreen({
 
         <div className="row row--steppers">
           <Stepper
-            label={`Вес, ${unitLabel(unit)}${multiplier > 1 ? ` (×${multiplier})` : ''}`}
+            label={`${exercise.bodyweight ? 'Доп. вес' : 'Вес'}, ${unitLabel(unit)}${multiplier > 1 ? ` (×${multiplier})` : ''}`}
             value={weight}
             onChange={setWeight}
             step={WEIGHT_STEP[unit]}
@@ -177,8 +183,12 @@ export function LogScreen({
           />
         </div>
 
+        {exercise.bodyweight ? (
+          <p className="muted small center">Отягощение сверх своего веса · пусто = только свой вес</p>
+        ) : null}
+
         {totalKg != null && (unit === 'lbs' || multiplier > 1) && (
-          <p className="muted small center">Итого: {trimNum(totalKg)} кг</p>
+          <p className="muted small center">Итого: {trimNum(totalKg)} кг{exercise.bodyweight ? ' сверх своего' : ''}</p>
         )}
 
         <button type="button" className="btn btn--primary btn--big" onClick={save}>
@@ -195,9 +205,7 @@ export function LogScreen({
             {sets.map((s) => (
               <li key={s.id} className="setlist__item">
                 <span className="setlist__idx">#{s.setIndex}</span>
-                <span className="setlist__main">
-                  {s.weight ?? '—'} кг × {s.reps ?? '—'}
-                </span>
+                <span className="setlist__main">{setMainLine(s)}</span>
                 {(s.multiplier > 1 || s.entryUnit === 'lbs') && s.entryWeight != null && (
                   <span className="muted small">
                     {trimNum(s.entryWeight)}

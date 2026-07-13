@@ -65,7 +65,7 @@ function looksLikeUrl(t: string): boolean {
 }
 
 // Достаём номер тренажёра из отсканированного текста.
-// TODO(Фаза 0): уточнить под реальную структуру ссылки DDX, как только получим URL.
+// TODO(Фаза 0): уточнить под реальную структуру ссылки тренажёра, как только получим URL.
 function extractNumber(text: string): number | null {
   if (looksLikeUrl(text)) {
     try {

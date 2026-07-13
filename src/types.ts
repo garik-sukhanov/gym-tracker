@@ -1,7 +1,7 @@
 // Единица ввода веса. Хранение всегда в кг (canonical).
 export type Unit = 'kg' | 'lbs'
 
-// Тренажёр из встроенного каталога (Фаза 0, собирается из QR-страниц DDX).
+// Тренажёр из встроенного каталога (Фаза 0, собирается из QR-страниц тренажёров).
 export interface Machine {
   number: number
   slug: string
@@ -22,6 +22,7 @@ export interface Exercise {
   machineNumber: number | null
   unit: Unit // единица ввода по умолчанию
   multiplier: number // множитель веса (1 — обычно, 2 — вес навешивается на каждую руку)
+  bodyweight: number // 0 | 1 — упражнение с собственным весом; вводимый вес — отягощение сверх своего
   note: string | null
   createdAt: string
   updatedAt: string
@@ -39,6 +40,7 @@ export interface WorkoutSet {
   entryWeight: number | null // что ввёл пользователь (в entryUnit, на одну сторону, до множителя)
   entryUnit: Unit
   multiplier: number
+  bodyweight: number // 0 | 1 — снимок: упражнение со своим весом (вес = отягощение сверх своего)
   reps: number | null
   setIndex: number
   rpe: number | null

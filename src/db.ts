@@ -44,6 +44,7 @@ export class GymDB extends Dexie {
               machineNumber: s.machineNumber ?? null,
               unit: 'kg',
               multiplier: 1,
+              bodyweight: 0,
               note: null,
               createdAt: s.performedAt ?? now,
               updatedAt: now,
@@ -119,6 +120,7 @@ export interface NewExerciseInput {
   machineNumber?: number | null
   unit?: Unit
   multiplier?: number
+  bodyweight?: number
   note?: string | null
 }
 
@@ -131,6 +133,7 @@ export async function createExercise(input: NewExerciseInput): Promise<Exercise>
     machineNumber: input.machineNumber ?? null,
     unit: input.unit ?? 'kg',
     multiplier: input.multiplier ?? 1,
+    bodyweight: input.bodyweight ?? 0,
     note: input.note ?? null,
     createdAt: now,
     updatedAt: now,
@@ -170,6 +173,7 @@ export interface NewSetInput {
   entryWeight: number | null
   entryUnit: Unit
   multiplier: number
+  bodyweight?: number
   reps: number | null
   rpe?: number | null
   note?: string | null
@@ -199,6 +203,7 @@ export async function addSet(input: NewSetInput): Promise<WorkoutSet> {
     entryWeight: input.entryWeight,
     entryUnit: input.entryUnit,
     multiplier: input.multiplier,
+    bodyweight: input.bodyweight ?? 0,
     reps: input.reps,
     setIndex: priorCount + 1,
     rpe: input.rpe ?? null,

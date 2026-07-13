@@ -69,6 +69,7 @@ export function ManageScreen({ onLog, onCreate, onEdit, onRebind }: Props) {
 function meta(e: Exercise): string {
   const parts = [unitLabel(e.unit)]
   if (e.multiplier > 1) parts.push(`×${e.multiplier}`)
+  if (e.bodyweight) parts.push('свой вес')
   parts.push(e.qrCode ? (e.machineNumber != null ? `QR №${e.machineNumber}` : 'QR') : 'без QR')
   return parts.join(' · ')
 }

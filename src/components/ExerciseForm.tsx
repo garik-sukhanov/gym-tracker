@@ -25,6 +25,7 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
   const [multiplier, setMultiplier] = useState<number>(
     exercise?.multiplier ?? prefill?.multiplier ?? 1,
   )
+  const [bodyweight, setBodyweight] = useState<boolean>(!!exercise?.bodyweight)
   const [note, setNote] = useState(exercise?.note ?? '')
 
   const qrCode = exercise?.qrCode ?? prefill?.qrCode ?? null
@@ -43,6 +44,7 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
         name: trimmed,
         unit,
         multiplier,
+        bodyweight: bodyweight ? 1 : 0,
         note: note.trim() || null,
       })
       onSaved(exercise.id)
@@ -51,6 +53,7 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
         name: trimmed,
         unit,
         multiplier,
+        bodyweight: bodyweight ? 1 : 0,
         note: note.trim() || null,
         qrCode,
         machineNumber,
@@ -106,6 +109,25 @@ export function ExerciseForm({ exercise, prefill, onSaved, onCancel }: Props) {
             ]}
             onChange={setMultiplier}
           />
+        </div>
+
+        <div className="field-group">
+          Собственный вес
+          <SegmentedControl<'no' | 'yes'>
+            value={bodyweight ? 'yes' : 'no'}
+            ariaLabel="Упражнение с собственным весом"
+            options={[
+              { value: 'no', label: 'Нет' },
+              { value: 'yes', label: 'Да' },
+            ]}
+            onChange={(v) => setBodyweight(v === 'yes')}
+          />
+          {bodyweight && (
+            <span className="muted small">
+              Вводимый вес — это отягощение сверх своего веса. Оставь пустым (или 0) для подхода
+              только со своим весом.
+            </span>
+          )}
         </div>
 
         <label className="field-group">

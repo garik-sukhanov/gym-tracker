@@ -75,6 +75,7 @@ export interface RecentExercise {
   number: number | null
   weight: number | null
   reps: number | null
+  bodyweight: number
   date: string
 }
 
@@ -97,6 +98,7 @@ export function recentExercises(sets: WorkoutSet[], limit = 6): RecentExercise[]
       number: last.machineNumber,
       weight: last.weight,
       reps: last.reps,
+      bodyweight: last.bodyweight ?? 0,
       date: last.performedAt,
     })
   }

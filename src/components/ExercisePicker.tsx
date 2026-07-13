@@ -32,6 +32,7 @@ export function ExercisePicker({ onPick, onCreateNew, onCancel }: Props) {
                     <span className="muted small">
                       {unitLabel(e.unit)}
                       {e.multiplier > 1 ? ` · ×${e.multiplier}` : ''}
+                      {e.bodyweight ? ' · свой вес' : ''}
                       {e.machineNumber != null ? ` · №${e.machineNumber}` : ''}
                     </span>
                   </span>

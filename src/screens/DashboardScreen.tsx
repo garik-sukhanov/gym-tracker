@@ -150,7 +150,12 @@ export function DashboardScreen({ onLog, onScan, onCreate }: Props) {
                     </span>
                   </span>
                   <span className="picklist__val">
-                    {r.weight ?? '—'} кг × {r.reps ?? '—'}
+                    {r.bodyweight
+                      ? r.weight && r.weight > 0
+                        ? `+${trimNum(r.weight)} кг`
+                        : 'свой вес'
+                      : `${r.weight ?? '—'} кг`}{' '}
+                    × {r.reps ?? '—'}
                   </span>
                 </button>
               </li>

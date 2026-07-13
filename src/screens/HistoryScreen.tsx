@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, softDeleteSet } from '../db'
-import { dayKey, formatDay, formatTime } from '../lib/format'
+import { dayKey, formatDay, formatTime, setMainLine } from '../lib/format'
 import { trimNum, unitLabel } from '../lib/units'
 import type { WorkoutSet } from '../types'
 
@@ -55,9 +55,7 @@ export function HistoryScreen() {
                 {g.items.map((s) => (
                   <li key={s.id} className="setlist__item">
                     <span className="setlist__idx">#{s.setIndex}</span>
-                    <span className="setlist__main">
-                      {s.weight ?? '—'} кг × {s.reps ?? '—'}
-                    </span>
+                    <span className="setlist__main">{setMainLine(s)}</span>
                     {(s.multiplier > 1 || s.entryUnit === 'lbs') && s.entryWeight != null && (
                       <span className="muted small">
                         {trimNum(s.entryWeight)}

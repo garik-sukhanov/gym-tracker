@@ -52,7 +52,7 @@ export async function exportJson(): Promise<number> {
     sets,
     measurements,
   }
-  download(JSON.stringify(backup, null, 2), `ddx-backup-${stamp()}.json`, 'application/json')
+  download(JSON.stringify(backup, null, 2), `backup-${stamp()}.json`, 'application/json')
   return sets.length
 }
 
@@ -118,6 +118,7 @@ async function importSheet(file: File): Promise<ImportResult> {
     const number = numOrNull(r['№'])
     const entryUnit: Unit = str(r['Ед.']) === 'lbs' ? 'lbs' : 'kg'
     const multiplier = numOrNull(r['×']) ?? 1
+    const bodyweight = isYes(r['Свой вес']) ? 1 : 0
 
     let ex = exByName.get(name)
     if (!ex) {
@@ -128,6 +129,7 @@ async function importSheet(file: File): Promise<ImportResult> {
         machineNumber: number,
         unit: entryUnit,
         multiplier,
+        bodyweight,
         note: null,
         createdAt: now,
         updatedAt: now,
@@ -153,6 +155,7 @@ async function importSheet(file: File): Promise<ImportResult> {
       entryWeight,
       entryUnit,
       multiplier,
+      bodyweight,
       reps,
       setIndex: numOrNull(r['Подход']) ?? 1,
       rpe: numOrNull(r['RPE']),
@@ -204,6 +207,11 @@ function numOrNull(v: unknown): number | null {
   if (t === '') return null
   const n = Number(t)
   return Number.isFinite(n) ? n : null
+}
+
+function isYes(v: unknown): boolean {
+  const t = str(v).toLowerCase()
+  return t === 'да' || t === '1' || t === 'true' || t === 'yes'
 }
 
 function isoOf(v: unknown, fallback: string): string {

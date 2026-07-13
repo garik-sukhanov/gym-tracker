@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'DDX Зал — учёт весов',
-        short_name: 'DDX Зал',
+        name: 'Трекер — учёт весов',
+        short_name: 'Трекер',
         description: 'Сканируй QR тренажёра и записывай подходы',
         lang: 'ru',
         theme_color: '#041B1E',

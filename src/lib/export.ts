@@ -11,6 +11,7 @@ interface ExportRow {
   '№': number | string
   Подход: number
   'Вес, кг': number | string
+  'Свой вес': string
   Повторы: number | string
   'Ед.': string
   '×': number
@@ -30,6 +31,7 @@ async function buildRows(): Promise<ExportRow[]> {
     '№': s.machineNumber ?? '',
     Подход: s.setIndex,
     'Вес, кг': s.weight ?? '',
+    'Свой вес': s.bodyweight ? 'да' : '',
     Повторы: s.reps ?? '',
     'Ед.': unitLabel(s.entryUnit ?? 'kg'),
     '×': s.multiplier ?? 1,
@@ -74,7 +76,7 @@ export async function exportXlsx(): Promise<number> {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mrows), 'Замеры')
   }
 
-  XLSX.writeFile(wb, `ddx-trenirovki-${stamp()}.xlsx`)
+  XLSX.writeFile(wb, `trenirovki-${stamp()}.xlsx`)
   return rows.length
 }
 
@@ -87,7 +89,7 @@ export async function exportCsv(): Promise<number> {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `ddx-trenirovki-${stamp()}.csv`
+  a.download = `trenirovki-${stamp()}.csv`
   a.click()
   URL.revokeObjectURL(url)
   return rows.length
