@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, addSet, softDeleteSet, lastSetForExercise, getExercise, updateExercise } from '../db'
-import { dayKey, formatTime, setMainLine } from '../lib/format'
+import { dayKey, formatDay, formatTime, setMainLine } from '../lib/format'
 import { nowIso } from '../lib/id'
 import { Stepper, SegmentedControl } from '../components/controls'
 import { fromKg, toKg, trimNum, unitLabel, WEIGHT_STEP, REPS_STEP } from '../lib/units'
@@ -14,6 +14,15 @@ interface Props {
   onCreate: () => void
   onAddVariant: (ex: Exercise) => void
 }
+
+interface DayBlock {
+  day: string // YYYY-MM-DD
+  date: string // performedAt последнего подхода в этот день
+  items: WorkoutSet[]
+}
+
+// Сколько прошлых дней показывать ниже блока «Сегодня» (полная история — в Журнале).
+const PAST_DAYS = 8
 
 export function LogScreen({
   exerciseId,
@@ -58,23 +67,35 @@ export function LogScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise?.id])
 
-  // Только подходы за сегодня — блок называется «Сегодня». День считаем так же,
-  // как журнал (dayKey), чтобы совпадало с группировкой в истории.
-  const sets = useLiveQuery(
+  // Подходы упражнения, сгруппированные по дням (свежие сверху). «Сегодня»
+  // рисуем отдельным блоком, прошлые дни — ниже. День считаем через dayKey,
+  // как журнал, чтобы группировка совпадала с историей.
+  const dayBlocks = useLiveQuery(
     async () => {
-      if (!exercise) return [] as WorkoutSet[]
-      const today = dayKey(nowIso())
+      if (!exercise) return [] as DayBlock[]
       const all = await db.sets
         .where('exerciseId')
         .equals(exercise.id)
-        .filter((s) => s.deleted === 0 && dayKey(s.performedAt) === today)
+        .filter((s) => s.deleted === 0)
         .toArray()
       all.sort((a, b) => b.performedAt.localeCompare(a.performedAt))
-      return all.slice(0, 30)
+      const byDay = new Map<string, WorkoutSet[]>()
+      for (const s of all) {
+        const k = dayKey(s.performedAt)
+        const arr = byDay.get(k)
+        if (arr) arr.push(s)
+        else byDay.set(k, [s])
+      }
+      // Map хранит порядок вставки, а all отсортирован по убыванию — дни идут свежими вперёд.
+      return [...byDay.entries()].map(([day, items]) => ({ day, date: items[0].performedAt, items }))
     },
     [exercise?.id],
-    [] as WorkoutSet[],
+    [] as DayBlock[],
   )
+
+  const today = dayKey(nowIso())
+  const todayItems = dayBlocks.find((b) => b.day === today)?.items ?? []
+  const pastBlocks = dayBlocks.filter((b) => b.day !== today).slice(0, PAST_DAYS)
 
   function changeUnit(next: Unit) {
     const n = num(weight)
@@ -198,36 +219,50 @@ export function LogScreen({
 
       <section className="card">
         <h2 className="card__title">Сегодня · {exercise.name}</h2>
-        {sets.length === 0 ? (
+        {todayItems.length === 0 ? (
           <p className="muted small">Пока нет подходов.</p>
         ) : (
-          <ul className="setlist">
-            {sets.map((s) => (
-              <li key={s.id} className="setlist__item">
-                <span className="setlist__idx">#{s.setIndex}</span>
-                <span className="setlist__main">{setMainLine(s)}</span>
-                {(s.multiplier > 1 || s.entryUnit === 'lbs') && s.entryWeight != null && (
-                  <span className="muted small">
-                    {trimNum(s.entryWeight)}
-                    {unitLabel(s.entryUnit)}
-                    {s.multiplier > 1 ? `×${s.multiplier}` : ''}
-                  </span>
-                )}
-                <span className="muted small">{formatTime(s.performedAt)}</span>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Удалить подход"
-                  onClick={() => softDeleteSet(s.id)}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
+          <SetRows items={todayItems} />
         )}
       </section>
+
+      {pastBlocks.map((b) => (
+        <section className="card" key={b.day}>
+          <h2 className="card__title">{formatDay(b.date)}</h2>
+          <SetRows items={b.items} />
+        </section>
+      ))}
     </div>
+  )
+}
+
+// Список подходов одного дня. Свежие сверху, как приходят из dayBlocks.
+function SetRows({ items }: { items: WorkoutSet[] }) {
+  return (
+    <ul className="setlist">
+      {items.map((s) => (
+        <li key={s.id} className="setlist__item">
+          <span className="setlist__idx">#{s.setIndex}</span>
+          <span className="setlist__main">{setMainLine(s)}</span>
+          {(s.multiplier > 1 || s.entryUnit === 'lbs') && s.entryWeight != null && (
+            <span className="muted small">
+              {trimNum(s.entryWeight)}
+              {unitLabel(s.entryUnit)}
+              {s.multiplier > 1 ? `×${s.multiplier}` : ''}
+            </span>
+          )}
+          <span className="muted small">{formatTime(s.performedAt)}</span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Удалить подход"
+            onClick={() => softDeleteSet(s.id)}
+          >
+            ✕
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }
 
